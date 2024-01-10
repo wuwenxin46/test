@@ -10,6 +10,7 @@ style.use('ggplot')
 def run_episode(env, agent, replaymemory, batch_size, epsilon):
     state = env.reset()
     reward_total = 0
+    cost_his = []
     while True:
         action = agent.take_action(state, epsilon)
         next_state, reward, done = env.step(action)
@@ -18,11 +19,16 @@ def run_episode(env, agent, replaymemory, batch_size, epsilon):
         if len(replaymemory) > batch_size:
             state_batch, action_batch, reward_batch, next_state_batch, done_batch = replaymemory.sample(batch_size)
             T_data = Transition(state_batch, action_batch, reward_batch, next_state_batch, done_batch)
-            agent.update(T_data)
+            l = agent.update(T_data)
+            cost_his.append(l.item())
         state = next_state
         if done:
             break
-    return reward_total
+    if len(cost_his) != 0:
+        loss = np.mean(cost_his).item()
+    else:
+        loss = 'NotCal'
+    return reward_total, loss
 
 
 def show_print(episode_rewards, episode, show_every, epsilon):
@@ -64,26 +70,37 @@ def draw_plot(episode_rewards, show_every):
     plt.show()
 
 
-def test(env, agent, episodes, delay_time, show_enable=True):
+def test(env, agent, epsilon, episodes, delay_time, show_enable=True):
     env = envCube()
-    avg_reward = 0
-    for episode in range(episodes):
-        state = env.reset()
-        done = False
-        episode_reward = 0
-        while not done:
-            action = agent.take_action(state)
-            next_state, reward, done = env.step(action)
-            episode_reward += reward
-            state = next_state
+    state = env.reset()
+    reward_episode = 0
+    while True:
+        action = agent.take_action(state, epsilon)
+        next_state, reward, done = env.step(action)
+        reward_episode += reward
+        state = next_state
+        if done:
+            break
+        env.render()
+        time.sleep(delay_time)
 
-            if show_enable == True:
-                env.render()
-                time.sleep(delay_time)
-        print(f'episode #{episode}, episode_reward:{episode_reward}')
-        avg_reward += avg_reward
-    avg_reward /= episodes
-    print(f'avg_reward:{avg_reward}')
+    # for episode in range(episodes):
+    #     state = env.reset()
+    #     done = False
+    #     episode_reward = 0
+    #     while not done:
+    #         action = agent.take_action(state)
+    #         next_state, reward, done = env.step(action)
+    #         episode_reward += reward
+    #         state = next_state
+    #
+    #         if show_enable == True:
+    #             env.render()
+    #             time.sleep(delay_time)
+    #     print(f'episode #{episode}, episode_reward:{episode_reward}')
+    #     avg_reward += avg_reward
+    # avg_reward /= episodes
+    # print(f'avg_reward:{avg_reward}')
 
 
 

@@ -27,6 +27,7 @@ class envCube:
     FOOD_REWARD = 25
     ENEMY_PENALITY = -300
     MOVE_PENALITY = -1
+    WALL_PENALITY = -10
 
     d = {1: (255, 0, 0),
          2: (0, 255, 0),
@@ -57,6 +58,8 @@ class envCube:
 
     def step(self, action):
         self.episode_step += 1
+        self.player_orgin_x = self.player.x
+        self.player_orgin_y = self.player.y
         self.player.action(action)
         self.food.move()
         self.enemy.move()
@@ -70,6 +73,8 @@ class envCube:
             reward = self.FOOD_REWARD
         elif self.player == self.enemy:
             reward = self.ENEMY_PENALITY
+        elif self.player_orgin_x == self.player.x and self.player_orgin_y == self.player.y:
+            reward = self.WALL_PENALITY
         else:
             reward = self.MOVE_PENALITY
 

@@ -25,34 +25,83 @@ if __name__ == "__main__":
     env = envCube()
     observation_n = env.OBSEVATION_SPACE_VALUES
     action_n = env.ACTION_SPACE_VALUES
-    epsilon = 0.4  # DQNenv.epsilon
-    agent = Agent(observation_n, action_n, gamma=0.98, lr=1e-3, target_update=50)
+    epsilon = 0.6  # DQNenv.epsilon
+    agent = Agent(observation_n, action_n, reward_decay=0.9, learning_rate=1e-4, target_update=10)
     replayMemory = ReplayMemory(memory_size=10000)
     batch_size = 10
-    num_episodes = 10000
+    num_episodes = 80000
     # show_every = DQNenv.SHOW_EVERY  # 3000
-    # decay = DQNenv.EPS_DECAY  # 0.9998
-    a = 10
+    decay = 0.998  # 0.9998
+    a = 800
     reward_list = []
-    for i in range(a):
+
+    # train
+    Train = False
+    if Train:
+        step = 0
         if path != '':
             agent.q_net.load_state_dict(torch.load(path))
-            # agent.target_q_net.load_state_dict(torch.load("net.pth"))
-        with tqdm(total=int(num_episodes / a), desc="Iteration %d" % i) as pbar:
-            for episode in range(int(num_episodes / a)):
-                show = False
-                reward_episode = run_episode(env, agent, replayMemory, batch_size, epsilon)
-                reward_list.append(reward_episode)
+            agent.target_q_net.load_state_dict(torch.load(path))
 
-                pbar.set_postfix({
-                    'episode': '%d' % (episode + 1),
-                    'return': '%.3f' % (np.mean(reward_list).item())
-                })
-                pbar.update(1)  # 更新进度条
-        test_reward = episode_evaluate(env, agent, epsilon, False)
-        # print("Episode %d, total reward: %.3f" % (episode, test_reward))
-        print(f'test_eva:{test_reward}')
-        torch.save(agent.q_net.state_dict(), 'net.pth')
+        for episode in tqdm(range(500)):
+            state = env.reset()
+            while True:
+                action = agent.take_action(state, epsilon)
+                next_state, reward, done = env.step(action)
+                replayMemory.push(state, action, reward, next_state, done)
+                if done:
+                    break
+
+        for i in range(a):
+            cost = []
+            with tqdm(total=int(num_episodes / a), desc="Iteration %d" % i) as pbar:
+                for episode in range(int(num_episodes / a)):
+                    show = False
+                    reward_episode, loss = run_episode(env, agent, replayMemory, batch_size, epsilon)
+                    reward_list.append(reward_episode)
+                    cost.append(loss)
+
+                    pbar.set_postfix({
+                        'episode': '%d' % (episode + 1),
+                        'epsilon': '%.3f' % epsilon,
+                        # 'loss': '%.3f' % loss,
+                        'return': '%.3f' % (np.mean(reward_list).item())
+                    })
+                    # print(loss)
+                    pbar.update(1)  # 更新进度条
+                print(f'loss_mean:{np.mean(cost).item()}')
+            epsilon *= decay
+            test_reward = episode_evaluate(env, agent, epsilon, False)
+            # print("Episode %d, total reward: %.3f" % (episode, test_reward))
+            print(f'test_eva:{test_reward}')
+            torch.save(agent.q_net.state_dict(), 'net.pth')
+
+    # test
+    # Test = False
+    if not Train:
+        if path != '':
+            agent.q_net.load_state_dict(torch.load(path))
+            agent.target_q_net.load_state_dict(torch.load(path))
+
+        delay_time = 0.5
+        env = envCube()
+        state = env.reset()
+        reward_episode = 0
+        e = 0.04
+        while True:
+            action = agent.take_action(state, e)
+            print(action)
+            next_state, reward, done = env.step(action)
+            print(reward)
+            reward_episode += reward
+            state = next_state
+            env.render()
+            if done:
+                break
+            time.sleep(delay_time)
+        print(reward_episode)
+
+
 
 
     # for episode in range(num_episodes):

@@ -7,20 +7,21 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class Agent(object):
-    def __init__(self, nb_observations, nb_actions, gamma, lr, target_update):
+    def __init__(self, nb_observations, nb_actions, reward_decay, learning_rate, target_update):
         self.action_dim = nb_actions
-        self.q_net = Qnet(nb_observations, nb_actions).to(device)
-        self.target_q_net = Qnet(nb_observations, nb_actions).to(device)
-        self.gamma = gamma
-        self.lr = lr
+        self.observation_dim = nb_observations
+        self.q_net = Qnet(self.observation_dim, self.action_dim).to(device)
+        self.target_q_net = Qnet(self.observation_dim, self.action_dim).to(device)
+        self.gamma = reward_decay
+        self.lr = learning_rate
         self.target_update = target_update
         self.count = 0
 
-        self.optimizer = optim.Adam(params=self.q_net.parameters(), lr=lr)
+        self.optimizer = optim.Adam(params=self.q_net.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()  # 均方误差公式
 
     def take_action(self, state, epsilon):
-        if np.random.uniform(0, 1) < 1 - epsilon:
+        if np.random.uniform(0, 1) > epsilon:
             state = torch.tensor(state, dtype=torch.float).to(device)
             action = torch.argmax(self.q_net(state)).item()
         else:
@@ -59,9 +60,9 @@ class Agent(object):
         # 这样做的目的是为了 稳定学习过程，避免目标Q值随着主网络的更新而频繁变化，导致训练不收敛或震荡
         if self.count % self.target_update == 0:  # target_update为目标更新频率
             self.target_q_net.load_state_dict(self.q_net.state_dict())
-
         self.count += 1
-
+        # print(l.cpu().detach().numpy())
+        return l.cpu().detach().numpy()
 
 
 
